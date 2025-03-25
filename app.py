@@ -1,8 +1,9 @@
-from flask import Flask
+from typing import Any
+from flask import Flask, jsonify, request
 from random import choice
     
 app = Flask(__name__)
-app.config['JSON_AS_ASCII'] = False
+app.json.ensure_ascii = False
 
 
 about_me = {
@@ -50,10 +51,14 @@ def hello_world():
 
 @app.route("/about")
 def about():
-    return about_me
+    return jsonify(about_me), 200
 
 # 1,2
-@app.route("/quotes/")
+@app.route("/quotes")
+def get_quotes() -> list[dict[str, Any]]:
+    """Функция неявно преобразовывает список словарей в JSON"""
+    return quotes
+
 @app.route("/quotes/<int:quote_id>")
 def quote(quote_id=None):
     if quote_id:
@@ -61,8 +66,6 @@ def quote(quote_id=None):
             if quote["id"] == quote_id:
                 return quote
         return f"Quote with id={quote_id} not found", 404
-    else:
-        return quotes
 
 
 # 3
@@ -72,9 +75,41 @@ def count():
 
 
 # 4
-@app.route("/random")
+@app.route("/quotes/random")
 def rand():
     return quotes[choice(range(len(quotes)))]
+
+
+@app.route("/params/<value>")
+def param_example(value: Any):
+    return jsonify(param=value)
+
+@app.route("/quotes", methods=['POST'])
+def create_quote():
+    new_quote = request.json
+    last_quote = quotes[-1]
+    new_id = last_quote["id"] + 1
+    new_quote["id"] = new_id
+    quotes.append(new_quote)
+    #print("data = ", data)
+    return jsonify(new_quote), 201
+
+@app.route("/quotes/<int:quote_id>", methods=["DELETE"])
+def delete_quote(quote_id: int):
+    for quote in quotes:
+        if quote["id"] == quote_id:
+            quotes.remove(quote)
+            return jsonify({"message": f"Quote with id={quote_id} has deleted"}), 200
+    return f"Quote with id={quote_id} not found", 404
+
+@app.route("/quotes/<int:quote_id>", methods=["PUT"])
+def edit_quote(quote_id):
+    new_data = request.json
+    for quote in quotes:
+        if quote["id"] == quote_id:
+            quote.update(new_data)
+            return jsonify({"message": f"Quote with id={quote_id} has updated"}), 200
+    return f"Quote with id={quote_id} not found", 404
 
 if __name__ == "__main__":
     app.run(debug=True)
