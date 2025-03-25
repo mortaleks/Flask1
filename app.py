@@ -72,7 +72,7 @@ def count():
 
 
 # 4
-@app.route("/rand")
+@app.route("/random")
 def rand():
     return quotes[choice(range(len(quotes)))]
 
