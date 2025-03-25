@@ -52,7 +52,7 @@ def hello_world():
 def about():
     return about_me
 
-# Задание 1-2
+# 1,2
 @app.route("/quotes/")
 @app.route("/quotes/<int:quote_id>")
 def quote(quote_id=None):
@@ -65,13 +65,13 @@ def quote(quote_id=None):
         return quotes
 
 
-# Задание 3
+# 3
 @app.route("/count")
 def count():
     return {"count": len(quotes)}
 
 
-# Задание 4
+# 4
 @app.route("/rand")
 def rand():
     return quotes[choice(range(len(quotes)))]
