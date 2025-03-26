@@ -7,6 +7,8 @@ from pathlib import Path
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String
 from flask_migrate import Migrate
+from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey
 
 class Base(DeclarativeBase):
     pass
@@ -23,18 +25,28 @@ db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 migrate = Migrate(app, db)
 
+class AuthorModel(db.Model):
+    __tablename__ = 'authors'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[int] = mapped_column(String(32), index= True, unique=True)
+    quotes: Mapped[list['QuoteModel']] = relationship( back_populates='author', lazy='dynamic')
+    
+    def __init__(self, name):
+        self.name = name
+    
+    def to_dict(self):
+        return {'name': self.name}
+
 class QuoteModel(db.Model):
     __tablename__ = 'quotes'
-
     id: Mapped[int] = mapped_column(primary_key=True)
-    author: Mapped[str] = mapped_column(String(32), unique=False, index=True)
+    author_id: Mapped[str] = mapped_column(ForeignKey('authors.id'))
+    author: Mapped['AuthorModel'] = relationship(back_populates='quotes')
     text: Mapped[str] = mapped_column(String(255))
-    rating: Mapped[int] = mapped_column(default=1, nullable=True)
 
-    def __init__(self, author, text, rating):
+    def __init__(self, author, text):
         self.author = author
         self.text = text
-        self.rating = rating
 
     def to_dict(self):
         return {
