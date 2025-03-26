@@ -35,7 +35,10 @@ class AuthorModel(db.Model):
         self.name = name
     
     def to_dict(self):
-        return {'name': self.name}
+        return {
+            'id': self.id,
+            'name': self.name
+            }
 
 class QuoteModel(db.Model):
     __tablename__ = 'quotes'
@@ -51,9 +54,7 @@ class QuoteModel(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "author": self.author,
-            "text": self.text,
-            "rating": self.rating
+            "text": self.text
         }
 
 # quotes = [
@@ -97,9 +98,15 @@ def get_quotes() -> list[dict[str, Any]]:
     for quote in quotes_db:
         quotes.append(quote.to_dict())
     return jsonify(quotes), 200
-    
 
-    return quotes
+@app.route("/authors/<int:author_id>/quotes")
+def get_author_quotes(author_id):
+    """Функция неявно преобразовывает список словарей в JSON"""
+    author  = db.session.get(AuthorModel, author_id)
+    quotes = []
+    for quote in author.quotes:
+        quotes.append(quote.to_dict())
+    return jsonify(author = author.to_dict(), quotes = quotes), 200
 
 
 @app.route("/quotes/<int:quote_id>")
