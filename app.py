@@ -27,7 +27,7 @@ class QuoteModel(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     author: Mapped[str] = mapped_column(String(32), unique=False, index=True)
     text: Mapped[str] = mapped_column(String(255))
-    rating: Mapped[int]# = mapped_column(default=1)
+    rating: Mapped[int] = mapped_column(default=1, nullable=True)
 
     def __init__(self, author, text, rating):
         self.author = author
@@ -117,7 +117,7 @@ def create_quote():
     quote = QuoteModel(**new_quote)
     db.session.add(quote)
     db.session.commit()
-    return jsonify(new_quote), 201
+    return jsonify(quote.to_dict()), 201
 
 @app.route("/quotes/<int:quote_id>", methods=["DELETE"])
 def delete_quote(quote_id: int):
