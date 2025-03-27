@@ -28,16 +28,19 @@ migrate = Migrate(app, db)
 class AuthorModel(db.Model):
     __tablename__ = 'authors'
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[int] = mapped_column(String(32), index= True, unique=True)
+    name: Mapped[str] = mapped_column(String(32), index= True, unique=True)
+    surname: Mapped[str] = mapped_column(String(32), nullable=True)
     quotes: Mapped[list['QuoteModel']] = relationship( back_populates='author', lazy='dynamic')
     
-    def __init__(self, name):
+    def __init__(self, name, surname):
         self.name = name
+        self.surname = surname
     
     def to_dict(self):
         return {
             'id': self.id,
-            'name': self.name
+            'name': self.name,
+            'surname': self.surname
             }
 
 class QuoteModel(db.Model):
@@ -54,6 +57,7 @@ class QuoteModel(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "author_id": self.author_id,
             "text": self.text
         }
 
@@ -90,6 +94,34 @@ class QuoteModel(db.Model):
 
 
 # 1,2
+
+def get_author_by_id(author_id):
+    return db.get_or_404(
+        AuthorModel,
+        author_id,
+        description=f"Author with id={author_id} not found",
+    )
+
+@app.route("/authors")
+def get_authors():
+    authors_db = db.session.scalars(db.select(AuthorModel)).all()
+    authors = []
+    for author in authors_db:
+        authors.append(author.to_dict())
+    return jsonify(authors), 200
+
+@app.route("/authors/<int:author_id>")
+def get_author(author_id: int):
+    author = get_author_by_id(author_id)
+    return jsonify(author.to_dict())
+
+@app.route("/authors/<int:author_id>", methods=["DELETE"])
+def delete_author(author_id: int):
+    author = get_author_by_id(author_id)
+    db.session.delete(author)
+    db.session.commit()
+    return jsonify({"message": f"Author with id={author_id} has deleted"}), 200
+
 @app.route("/quotes")
 def get_quotes() -> list[dict[str, Any]]:
     """Функция неявно преобразовывает список словарей в JSON"""
@@ -132,10 +164,23 @@ def get_quote(quote_id: int):
 # def param_example(value: Any):
 #     return jsonify(param=value)
 
-@app.route("/quotes", methods=['POST'])
-def create_quote():
+@app.route("/authors", methods=['POST'])
+def create_author():
+    new_author = request.json
+    author = AuthorModel(**new_author)
+    db.session.add(author)
+    db.session.commit()
+    return jsonify(author.to_dict()), 201
+
+@app.route("/authors/<int:author_id>/quotes", methods=['POST'])
+def create_quote(author_id: int):
+    author = get_author_by_id(author_id)
     new_quote = request.json
-    quote = QuoteModel(**new_quote)
+    attrs = set(new_quote.keys()) & {"text"}
+    for attr in attrs:
+        if attr == "text":
+            quote_text = new_quote[attr]
+    quote = QuoteModel(author, quote_text)
     db.session.add(quote)
     db.session.commit()
     return jsonify(quote.to_dict()), 201
@@ -151,8 +196,12 @@ def delete_quote(quote_id: int):
 def edit_quote(quote_id):
     select_quote = db.get_or_404(QuoteModel, quote_id, description=f"Quote with id={quote_id} not found")
     new_data = request.json
-    for key, value in new_data.items():
-        setattr(select_quote, key, value)
+    attrs = set(new_data.keys()) & {"author_id", "text"}
+    for attr in attrs:
+            if attr == "author_id":
+                select_quote.author_id = new_data[attr]
+            if attr == "text":
+                select_quote.text = new_data[attr]
     db.session.commit()    
     return jsonify({"message": f"Quote with id={quote_id} has updated"}), 200
 
